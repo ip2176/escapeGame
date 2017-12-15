@@ -1,4 +1,5 @@
 import sys
+import operator
 from PyQt5.QtGui import QImage, QPalette, QBrush
 from PyQt5.QtWidgets import (QWidget, QLabel, 
      QLineEdit, QApplication, QPushButton)
@@ -13,6 +14,7 @@ class Spinner():
         self.second = '/'
         self.third = '--'
         self.fourth = '\\'
+        self.num_of_sprites = 4
         self.current = None
         self.speed = 0.1
         self.num_rotations = 6
@@ -38,7 +40,7 @@ class Spinner():
         self.current = self.first
 
     def calculate_rotations(self):
-        return range(1, self.num_rotations * 4 + 2)
+        return range(1, self.num_rotations * self.num_of_sprites + 2) # Extra 2 for the start and end animations
 
 
 class Game(QWidget):
@@ -50,10 +52,10 @@ class Game(QWidget):
         self.game_end_fail = False
         self.game_end_success = False
         self.default_message = 'Waiting for database key ...'
-        self.secret_keys = {'TEST': ['1', False],
-                            'TEST2': ['2', False],
-                            'TEST3': ['3', False],
-                            'TEST4': ['4', False]}
+        self.secret_keys = {'TEST': ['1', False, 'Imagine'],
+                            'TEST2': ['2', False, 'A'],
+                            'TEST3': ['3', False, 'Password'],
+                            'TEST4': ['4', False, 'Here']}
         self.initUI()
         
     def initUI(self):
@@ -78,7 +80,7 @@ class Game(QWidget):
 
         self.qbutton.resize(self.qbutton.sizeHint())
         self.setGeometry(300, 300, 1500, 800)
-        self.setWindowTitle('Escape Game')    
+        self.setWindowTitle('Secure Database')
         self.show()
 
     def tries_left(self):
@@ -124,7 +126,6 @@ class Game(QWidget):
             message_text = self.not_found_message()
             code_text = ''
 
-        
         for key, value in self.secret_keys.items():
             if value[1]:
                 num_guessed += 1
@@ -133,8 +134,9 @@ class Game(QWidget):
             message_text = 'Key Success: Code obtained'
             code_text = ''
             self.game_end_success = True
-            for key, value in self.secret_keys.items():
-                code_text += '{0} '.format(value[0])
+            sorted_keys = sorted(self.secret_keys.items(), key=operator.itemgetter(1))
+            for value in sorted_keys:
+                code_text += value[1][2]
 
         # Game over
         if self.tries_remaining == 0 and code_text == '':
@@ -143,6 +145,15 @@ class Game(QWidget):
 
         return message_text, code_text
 
+    def game_end_check(self):
+        if self.game_end_fail:
+            self.qline_edit.hide()
+            self.code_label.hide()
+            self.qbutton.hide()
+        if self.game_end_success:
+            self.qline_edit.hide()
+            self.qbutton.hide()
+        
     @pyqtSlot()
     def on_qbutton_clicked(self):
         input_text = self.qline_edit.text()
@@ -153,13 +164,7 @@ class Game(QWidget):
         self.update_label(self.code_label, code_text)
 
         # Hide all the things!
-        if self.game_end_fail:
-            self.qline_edit.hide()
-            self.code_label.hide()
-            self.qbutton.hide()
-        if self.game_end_success:
-            self.qline_edit.hide()
-            self.qbutton.hide()
+        self.game_end_check()
 
         if not self.game_end_fail and not self.game_end_success:
             sleep(2)
