@@ -1,6 +1,7 @@
 import sys
+import os
 import operator
-from PyQt5.QtGui import QImage, QPalette, QBrush
+from PyQt5.QtGui import QImage, QPalette, QBrush, QFont
 from PyQt5.QtWidgets import (QWidget, QLabel, 
      QLineEdit, QApplication, QPushButton)
 from PyQt5.QtCore import QCoreApplication, pyqtSlot, QSize
@@ -52,28 +53,41 @@ class Game(QWidget):
         self.game_end_fail = False
         self.game_end_success = False
         self.default_message = 'Waiting for database key ...'
-        self.secret_keys = {'TEST': ['1', False, 'Imagine'],
-                            'TEST2': ['2', False, 'A'],
-                            'TEST3': ['3', False, 'Password'],
-                            'TEST4': ['4', False, 'Here']}
+        self.secret_keys = {'TEST': False,
+                            'TEST2': False,
+                            'TEST3': False,
+                            'TEST4': False}
+        self.secret_password = 'ImagineAPasswordHere'
+        self.background_image_path = self.resource_path("Webster_notes.png")
+        self.font = "Times"
+        self.font_size = 8
         self.initUI()
         
     def initUI(self):
-        oImage = QImage(r"./images/Webster_Notes.png" )
+        myfont = QFont(self.font, self.font_size) 
+
+        oImage = QImage(self.background_image_path)
         sImage = oImage.scaled(QSize(1500, 800))
         palette = QPalette()
         palette.setBrush(10, QBrush(sImage))
         self.setPalette(palette)
 
         self.qline_edit = QLineEdit(self)
+        self.qline_edit.setFont(myfont)
         self.message_label = QLabel(self.default_message, self)
+        self.message_label.setFont(myfont)
         self.code_label = QLabel(self)
+        self.code_label.setFont(myfont)
+        self.success_message_label = QLabel(self)
+        self.success_message_label.setFont(myfont)
         self.qbutton = QPushButton('Submit', self)
+        self.qbutton.setFont(myfont)
 
         self.qline_edit.move(600, 380)
         self.qbutton.move(800, 375)
         self.message_label.move(600, 280)
-        self.code_label.move(750, 480)
+        self.success_message_label.move(600, 480)
+        self.code_label.move(755, 480)
 
         self.qline_edit.returnPressed.connect(self.qbutton.click)
         self.qbutton.clicked.connect(self.on_qbutton_clicked)
@@ -82,6 +96,15 @@ class Game(QWidget):
         self.setGeometry(300, 300, 1500, 800)
         self.setWindowTitle('Secure Database')
         self.show()
+
+    def resource_path(self, relative_path):
+        try:
+            # PyInstaller creates a temp folder and stores path in _MEIPASS
+            base_path = sys._MEIPASS
+        except Exception:
+            base_path = os.path.abspath(".")
+
+        return os.path.join(base_path, relative_path)
 
     def tries_left(self):
         self.tries_remaining = self.tries_remaining - 1
@@ -113,13 +136,14 @@ class Game(QWidget):
     def check_text(self, text):
         self.check_test_sleep(text)   
         code_text = None
+        success_message_text = ''
         num_guessed = 0
 
         for key, value in self.secret_keys.items():
             if text.upper() == key:
                 message_text = 'Key entered'
                 code_text = 'Key accepted'
-                value[1] = True
+                self.secret_keys[key] = True
                 break
 
         if code_text is None:
@@ -127,28 +151,27 @@ class Game(QWidget):
             code_text = ''
 
         for key, value in self.secret_keys.items():
-            if value[1]:
+            if value:
                 num_guessed += 1
 
         if num_guessed == len(self.secret_keys.keys()):
-            message_text = 'Key Success: Code obtained'
-            code_text = ''
+            message_text = 'Top Secret access granted. Welcome Agent 69-88'
+            success_message_text = 'Document Password:'
+            code_text = self.secret_password
             self.game_end_success = True
-            sorted_keys = sorted(self.secret_keys.items(), key=operator.itemgetter(1))
-            for value in sorted_keys:
-                code_text += value[1][2]
 
         # Game over
         if self.tries_remaining == 0 and code_text == '':
             message_text = 'Database shutdown, system intrusion detected'
             self.game_end_fail = True
 
-        return message_text, code_text
+        return message_text, code_text, success_message_text
 
     def game_end_check(self):
         if self.game_end_fail:
             self.qline_edit.hide()
             self.code_label.hide()
+            self.success_message_label.hide()
             self.qbutton.hide()
         if self.game_end_success:
             self.qline_edit.hide()
@@ -159,8 +182,11 @@ class Game(QWidget):
         input_text = self.qline_edit.text()
         self.qline_edit.clear()
         self.update_label(self.code_label, '')
-        message_text, code_text = self.check_text(input_text)
+        message_text, code_text, success_message_text = self.check_text(input_text)
+
+        # When we click the button make sure we update the messages after processing
         self.update_label(self.message_label, message_text)
+        self.update_label(self.success_message_label, success_message_text)
         self.update_label(self.code_label, code_text)
 
         # Hide all the things!
