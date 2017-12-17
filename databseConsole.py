@@ -4,7 +4,7 @@ import operator
 from PyQt5.QtGui import QImage, QPalette, QBrush, QFont
 from PyQt5.QtWidgets import (QWidget, QLabel, 
      QLineEdit, QApplication, QPushButton)
-from PyQt5.QtCore import QCoreApplication, pyqtSlot, QSize
+from PyQt5.QtCore import QCoreApplication, pyqtSlot, QSize, QTimer
 from time import sleep
 
 
@@ -53,11 +53,10 @@ class Game(QWidget):
         self.game_end_fail = False
         self.game_end_success = False
         self.default_message = 'Waiting for database key ...'
-        self.secret_keys = {'TEST': False,
-                            'TEST2': False,
-                            'TEST3': False,
-                            'TEST4': False}
-        self.secret_password = 'ImagineAPasswordHere'
+        self.secret_keys = {'9291184': False,
+                            '117193': False,
+                            'TEST3': False}
+        self.secret_password = ''
         self.background_image_path = self.resource_path("Webster_notes.png")
         self.font = "Times"
         self.font_size = 8
@@ -72,12 +71,16 @@ class Game(QWidget):
         palette.setBrush(10, QBrush(sImage))
         self.setPalette(palette)
 
+        self.timer_label = QLabel(self)
+        self.timer = QTimer()
+
         self.qline_edit = QLineEdit(self)
         self.qline_edit.setFont(myfont)
         self.message_label = QLabel(self.default_message, self)
         self.message_label.setFont(myfont)
         self.code_label = QLabel(self)
         self.code_label.setFont(myfont)
+        self.timer_label.setFont(myfont)
         self.success_message_label = QLabel(self)
         self.success_message_label.setFont(myfont)
         self.qbutton = QPushButton('Submit', self)
@@ -88,9 +91,11 @@ class Game(QWidget):
         self.message_label.move(600, 280)
         self.success_message_label.move(600, 480)
         self.code_label.move(755, 480)
+        self.timer_label.move(500, 260)
 
         self.qline_edit.returnPressed.connect(self.qbutton.click)
         self.qbutton.clicked.connect(self.on_qbutton_clicked)
+        self.timer.timeout.connect(self.timerTick)
 
         self.qbutton.resize(self.qbutton.sizeHint())
         self.setGeometry(300, 300, 1500, 800)
@@ -105,6 +110,23 @@ class Game(QWidget):
             base_path = os.path.abspath(".")
 
         return os.path.join(base_path, relative_path)
+
+    def updateTimerDisplay(self):
+        time = "%d:%02d" % (self.time_left/60, self.time_left % 60)
+        self.update_label(self.timer_label, time)
+
+    def startTimer(self):
+        self.time_left = 10
+        self.updateTimerDisplay()
+        self.timer.start(1000)
+
+    def timerTick(self):
+        self.time_left -= 1
+        self.updateTimerDisplay()
+        if self.time_left <= 0:
+           self.timer.stop()
+           self.game_end_failure()
+           
 
     def tries_left(self):
         self.tries_remaining = self.tries_remaining - 1
@@ -157,6 +179,7 @@ class Game(QWidget):
         if num_guessed == len(self.secret_keys.keys()):
             message_text = 'Top Secret access granted. Welcome Agent 69-88'
             success_message_text = 'Document Password:'
+                                
             code_text = self.secret_password
             self.game_end_success = True
 
@@ -167,16 +190,25 @@ class Game(QWidget):
 
         return message_text, code_text, success_message_text
 
+    def game_end_failure(self):
+        self.qline_edit.hide()
+        self.code_label.hide()
+        self.success_message_label.hide()
+        self.qbutton.hide()
+        self.timer.stop()
+        self.timer_label.hide()
+
+    def game_end_success(self):
+        self.qline_edit.hide()
+        self.qbutton.hide()
+        self.timer.stop()
+
     def game_end_check(self):
         if self.game_end_fail:
-            self.qline_edit.hide()
-            self.code_label.hide()
-            self.success_message_label.hide()
-            self.qbutton.hide()
+            self.game_end_failure()
         if self.game_end_success:
-            self.qline_edit.hide()
-            self.qbutton.hide()
-        
+            self.game_end_success()
+
     @pyqtSlot()
     def on_qbutton_clicked(self):
         input_text = self.qline_edit.text()
@@ -197,8 +229,10 @@ class Game(QWidget):
             self.update_label(self.message_label, self.default_message)
             self.update_label(self.code_label, '')
 
+
 if __name__ == '__main__':
     
     app = QApplication(sys.argv)
     game = Game()
+    game.startTimer()
     sys.exit(app.exec_())
