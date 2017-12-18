@@ -57,7 +57,7 @@ class Game(QWidget):
                             '117193': False,
                             'TEST3': False}
         self.secret_password = ''
-        self.background_image_path = self.resource_path("Webster_notes.png")
+        self.background_image_path = self.resource_path("Webster_Notes.png")
         self.font = "Times"
         self.font_size = 8
         self.initUI()
@@ -125,7 +125,7 @@ class Game(QWidget):
         self.updateTimerDisplay()
         if self.time_left <= 0:
            self.timer.stop()
-           self.game_end_failure()
+           self.game_end_timeout()
            
 
     def tries_left(self):
@@ -189,6 +189,16 @@ class Game(QWidget):
             self.game_end_fail = True
 
         return message_text, code_text, success_message_text
+
+    def game_end_timeout(self):
+        message_text = 'Database shutdown, system intrusion detected'
+        self.update_label(self.message_label, message_text)
+        self.qline_edit.hide()
+        self.code_label.hide()
+        self.success_message_label.hide()
+        self.qbutton.hide()
+        self.timer.stop()
+        self.timer_label.hide()
 
     def game_end_failure(self):
         self.qline_edit.hide()
