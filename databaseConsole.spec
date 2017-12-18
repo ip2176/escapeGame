@@ -3,7 +3,7 @@
 block_cipher = None
 
 
-a = Analysis(['databseConsole.py'],
+a = Analysis(['databaseConsole.py'],
              pathex=['C:\\Users\\Ian\\Desktop\\EscapeGame'],
              binaries=[],
              datas=[],
@@ -23,7 +23,7 @@ exe = EXE(pyz,
           a.binaries,
           a.zipfiles,
           a.datas,
-          name='databseConsole',
+          name='databaseConsole',
           debug=False,
           strip=False,
           upx=True,
