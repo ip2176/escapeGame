@@ -49,14 +49,19 @@ class Game(QWidget):
     def __init__(self):
         super().__init__()
         self.spinner = Spinner()
-        self.tries_remaining = 3
+        self.tries_remaining = 9
         self.game_end_fail = False
-        self.game_end_success = False
+        self.game_end_triumph = False
+        self.game_timeout = False
+        self.screen_updated = False
+        self.long_message_length = 10
+        self.game_time = 1500
         self.default_message = 'Waiting for database key ...'
+        self.game_failure_message = 'Database shutdown, system intrusion detected'
         self.secret_keys = {'9291184': False,
                             '117193': False,
-                            'TEST3': False}
-        self.secret_password = ''
+                            '861364710132011141107': False}
+        self.secret_password = '# 1261'
         self.background_image_path = self.resource_path("Webster_Notes.png")
         self.font = "Times"
         self.font_size = 8
@@ -116,7 +121,7 @@ class Game(QWidget):
         self.update_label(self.timer_label, time)
 
     def startTimer(self):
-        self.time_left = 10
+        self.time_left = self.game_time
         self.updateTimerDisplay()
         self.timer.start(1000)
 
@@ -125,7 +130,8 @@ class Game(QWidget):
         self.updateTimerDisplay()
         if self.time_left <= 0:
            self.timer.stop()
-           self.game_end_timeout()
+           self.game_timeout = True
+           self.game_end_timeout(self.screen_updated)
            
 
     def tries_left(self):
@@ -138,6 +144,11 @@ class Game(QWidget):
         QApplication.processEvents()
 
     def check_message(self, text):
+        if len(text) >= self.long_message_length:
+
+            # If the message is too long, cut it down
+            text = text[0:9] + "..."
+
         return 'Entering key ({0}) to the secure database {1}'.format(text, self.spinner.get_next())
 
     def not_found_message(self):
@@ -162,10 +173,14 @@ class Game(QWidget):
         num_guessed = 0
 
         for key, value in self.secret_keys.items():
-            if text.upper() == key:
-                message_text = 'Key entered'
-                code_text = 'Key accepted'
-                self.secret_keys[key] = True
+            if text == key:
+                if self.secret_keys[key] == False:
+                    message_text = 'Key entered'
+                    code_text = 'Key accepted'
+                    self.secret_keys[key] = True
+                else:
+                    message_text = 'Key already entered'
+                    code_text = ''
                 break
 
         if code_text is None:
@@ -178,45 +193,54 @@ class Game(QWidget):
 
         if num_guessed == len(self.secret_keys.keys()):
             message_text = 'Top Secret access granted. Welcome Agent 69-88'
-            success_message_text = 'Document Password:'
+            success_message_text = ''
                                 
             code_text = self.secret_password
-            self.game_end_success = True
+            self.game_end_triumph = True
 
         # Game over
         if self.tries_remaining == 0 and code_text == '':
-            message_text = 'Database shutdown, system intrusion detected'
+            message_text = self.game_failure_message
             self.game_end_fail = True
 
         return message_text, code_text, success_message_text
 
-    def game_end_timeout(self):
-        message_text = 'Database shutdown, system intrusion detected'
-        self.update_label(self.message_label, message_text)
+    def game_end_timeout(self, screen_updated):
+        if not screen_updated:
+            message_text = self.game_failure_message
+            self.update_label(self.message_label, message_text)
         self.qline_edit.hide()
         self.code_label.hide()
         self.success_message_label.hide()
         self.qbutton.hide()
         self.timer.stop()
         self.timer_label.hide()
+        self.game_end_fail = True
 
-    def game_end_failure(self):
+    def game_end_failure(self, screen_updated):
+        if not screen_updated:
+            message_text = self.game_failure_message
+            self.update_label(self.message_label, message_text)
         self.qline_edit.hide()
         self.code_label.hide()
         self.success_message_label.hide()
         self.qbutton.hide()
         self.timer.stop()
         self.timer_label.hide()
+        self.game_end_fail = True
 
     def game_end_success(self):
         self.qline_edit.hide()
         self.qbutton.hide()
         self.timer.stop()
+        self.game_end_triumph = True
 
-    def game_end_check(self):
+    def game_end_check(self, screen_updated):
         if self.game_end_fail:
-            self.game_end_failure()
-        if self.game_end_success:
+            self.game_end_failure(screen_updated)
+        if self.game_timeout:
+            self.game_end_timeout(screen_updated)
+        if self.game_end_triumph:
             self.game_end_success()
 
     @pyqtSlot()
@@ -231,13 +255,19 @@ class Game(QWidget):
         self.update_label(self.success_message_label, success_message_text)
         self.update_label(self.code_label, code_text)
 
-        # Hide all the things!
-        self.game_end_check()
-
-        if not self.game_end_fail and not self.game_end_success:
+        self.screen_updated = True
+            
+        # Check for game end before returning to the main screen
+        if not self.game_end_fail and not self.game_end_triumph and not self.game_timeout:
             sleep(2)
             self.update_label(self.message_label, self.default_message)
             self.update_label(self.code_label, '')
+
+            # Reset the screen status
+            self.screen_updated = False
+        else:
+            self.screen_updated = False
+            self.game_end_check(self.screen_updated)
 
 
 if __name__ == '__main__':
